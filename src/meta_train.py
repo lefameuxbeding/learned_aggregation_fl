@@ -156,7 +156,7 @@ def meta_train(args):
             )
 
     run = wandb.init(
-        project="learned_aggregation_meta_train",
+        project="learned_aggregation_fl",
         group=args.meta_train_name,
         config=vars(args),
     )

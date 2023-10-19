@@ -44,7 +44,7 @@ def sweep(args):
         key = jax.random.PRNGKey(0)
 
         run = wandb.init(
-            project="learned_aggregation_meta_test", group=args.name, config=vars(args)
+            project="learned_aggregation_fl", group=args.name, config=vars(args)
         )
         args = argparse.Namespace(**run.config)
 
@@ -73,6 +73,6 @@ def sweep(args):
         run.finish()
 
     sweep_id = wandb.sweep(
-        sweep=args.sweep_config, project="learned_aggregation_meta_test"
+        sweep=args.sweep_config, project="learned_aggregation_fl"
     )
     wandb.agent(sweep_id, sweep_fn)
