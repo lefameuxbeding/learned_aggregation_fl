@@ -188,32 +188,33 @@ def _fedavg(args):
                 split_factor, arr.shape[0] // split_factor, *arr.shape[1:]
             )
 
-        images = split(images, args.num_grads)
-        labels = split(labels, args.num_grads)
-
-        def local_updates(im, lab):
+        def local_updates(im, lab, key):
             local_opt_state = copy.deepcopy(opt_state)
-            s_c_images = split(im, args.num_local_steps)
-            s_c_labels = split(lab, args.num_local_steps)
-
-            s_c_batch = []
-            for i in range(args.num_local_steps):
-                sub_batch_dict = {}
-                sub_batch_dict["image"] = s_c_images[i]
-                sub_batch_dict["label"] = s_c_labels[i]
-                s_c_batch.append(FlatMap(sub_batch_dict))
 
             losses = []
 
-            for sub_client_batch in s_c_batch:
-                params = opt.get_params(local_opt_state)
-                l, grad = jax.value_and_grad(task.loss)(params, key, sub_client_batch)
-                losses.append(l)
-                local_opt_state = opt.update(local_opt_state, grad, loss=l)
+            for _ in range(args.num_local_steps): # Total number of local epochs
+                key, key1 = jax.random.split(key) # Key is same so permutations are the same for each array
+                s_c_images = split(jax.random.permutation(key1, im), len(im) // args.local_batch_size)
+                s_c_labels = split(jax.random.permutation(key1, lab), len(lab) // args.local_batch_size)
+
+                s_c_batch = []
+                for i in range(len(im) // args.local_batch_size): # One local epoch
+                    sub_batch_dict = {}
+                    sub_batch_dict["image"] = s_c_images[i]
+                    sub_batch_dict["label"] = s_c_labels[i]
+                    s_c_batch.append(FlatMap(sub_batch_dict))
+
+                for sub_client_batch in s_c_batch:  # One local epoch
+                    params = opt.get_params(local_opt_state)
+                    l, grad = jax.value_and_grad(task.loss)(params, key, sub_client_batch)
+                    losses.append(l)
+                    local_opt_state = opt.update(local_opt_state, grad, loss=l)
 
             return jnp.mean(jnp.array(losses)), opt.get_params(local_opt_state)
 
-        losses, new_params = jax.vmap(local_updates)(images, labels)
+        key, key1 = jax.random.split(key)
+        losses, new_params = jax.vmap(local_updates, in_axes=(0, 0, None))(images, labels, key1)
         avg_params = jax.tree_util.tree_map(
             lambda p, nps: jnp.mean(nps, axis=0), opt.get_params(opt_state), new_params
         )
@@ -221,9 +222,6 @@ def _fedavg(args):
         return opt.init(avg_params), jnp.mean(jnp.array(losses))
 
     return opt, update
-
-
-import pdb
 
 
 def _fedavg_slowmo(args):
@@ -247,6 +245,7 @@ def _fedavg_slowmo(args):
 
         def local_updates(im, lab):
             local_opt_state = copy.deepcopy(opt_state)
+            
             s_c_images = split(im, args.num_local_steps)
             s_c_labels = split(lab, args.num_local_steps)
 

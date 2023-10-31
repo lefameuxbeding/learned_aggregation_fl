@@ -2,10 +2,6 @@ _base_ = ["./sweeps_base.py"]
 
 optimizer = "fedavg"
 task = "image-mlp-fmst"
-num_inner_steps = 1000
-
-num_grads = 8
-num_local_steps = 4
 
 sweep_config = dict(
     method="grid",
@@ -15,8 +11,15 @@ sweep_config = dict(
             values=[
                 1,
                 0.5,
-                0.3,
                 0.1,
+                0.05,
+                0.01,
+                0.005,
+                0.001,
+                0.0005,
+                0.0001,
+                0.00005,
+                0.00001,
             ]
         ),
     ),

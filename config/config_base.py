@@ -6,7 +6,7 @@ optimizer = "fedavg"
 task = "small-image-mlp-fmst"
 hidden_size = 32
 local_learning_rate = 0.5
-local_batch_size = 128
+local_batch_size = 80
 num_grads = 8
 num_local_steps = 4
 num_inner_steps = 1000
@@ -25,8 +25,13 @@ meta_loss_split = None
 num_runs = 10
 wandb_checkpoint_id = None
 test_project = "learned_aggregation_fl"
+
 # for slowmo
 beta = 0.99
+
+# FL
+number_clients = 100
+participation_rate = 0.1
 
 # sweeps only
 sweep_config = dict()

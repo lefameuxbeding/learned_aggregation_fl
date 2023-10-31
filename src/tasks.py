@@ -509,6 +509,11 @@ def get_task(args, is_test=False):
         ],
     }
 
+    train_batch_size = {
+        "small-image-mlp-fmst": 48000,
+        "image-mlp-fmst": 48000,
+    }
+
     test_batch_size = {
         "small-conv-imagenet32": 10000,
         "conv-imagenet32": 10000,
@@ -538,9 +543,11 @@ def get_task(args, is_test=False):
             if ("_c10" in k or "imagenet" in k or "_fmnist" in k)
         }
     )
-    batch_size = args.num_grads * args.num_local_steps * args.local_batch_size
+
     if is_test:
         batch_size = test_batch_size[args.task]
+    else:
+        batch_size = train_batch_size[args.task]
 
     task = tasks[args.task]
 

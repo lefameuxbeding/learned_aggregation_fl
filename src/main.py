@@ -40,6 +40,8 @@ def parse_args():
     parser.add_argument("--num_inner_steps", type=int)
     parser.add_argument("--num_outer_steps", type=int)
     parser.add_argument("--beta", type=float)
+    parser.add_argument("--number_clients", type=int)
+    parser.add_argument("--participation_rate", type=float)
     parser.add_argument("--sweep_config", type=str)
     parser.add_argument("--from_checkpoint", action="store_true")
     parser.add_argument("--test_checkpoint", type=str)
@@ -107,8 +109,8 @@ if __name__ == "__main__":
             print("[INFO] Overriding config value: {}={}".format(k, v))
             cfg._cfg_dict[k] = v
 
-    cfg.name = "{}{}_{}{}".format(
-        cfg.optimizer, cfg.hidden_size, cfg.task, cfg.name_suffix
+    cfg.name = "{}_{}{}".format(
+        cfg.optimizer, cfg.task, cfg.name_suffix
     )
     cfg.meta_train_name = "{}{}_{}_K{}_H{}_{}{}".format(
         cfg.optimizer,
