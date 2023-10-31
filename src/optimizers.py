@@ -199,7 +199,7 @@ def _fedavg(args):
                 s_c_labels = split(jax.random.permutation(key1, lab), len(lab) // args.local_batch_size)
 
                 s_c_batch = []
-                for i in range(len(im) // args.local_batch_size): # One local epoch
+                for i in range(len(im) // args.local_batch_size):
                     sub_batch_dict = {}
                     sub_batch_dict["image"] = s_c_images[i]
                     sub_batch_dict["label"] = s_c_labels[i]
