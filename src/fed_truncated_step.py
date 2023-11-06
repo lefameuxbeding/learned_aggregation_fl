@@ -106,8 +106,8 @@ def progress_or_reset_inner_opt_state_fedlopt(
             local_opt_state = local_opt.init(p)
             
             key, key1 = jax.random.split(key)
-            chosen_clients_images = jax.random.choice(key1, jnp.array(globals.splitted_data["image"]), shape=(int(100 * 0.1),), replace=False) # TODO Fix args
-            chosen_clients_labels = jax.random.choice(key1, jnp.array(globals.splitted_data["label"]), shape=(int(100 * 0.1),), replace=False) # TODO Fix args
+            chosen_clients_images = jax.random.choice(key1, jnp.array(globals.splitted_data["image"]), shape=(int(globals.number_clients * globals.participation_rate),), replace=False)
+            chosen_clients_labels = jax.random.choice(key1, jnp.array(globals.splitted_data["label"]), shape=(int(globals.number_clients * globals.participation_rate),), replace=False)
             chosen_clients_data = {"image": chosen_clients_images, "label": chosen_clients_labels}
 
             images = jnp.array(chosen_clients_data["image"])
@@ -124,13 +124,13 @@ def progress_or_reset_inner_opt_state_fedlopt(
 
                 losses = []
 
-                for _ in range(4): # Total number of local epochs # TODO Fix args
+                for _ in range(globals.nun_local_steps): # Total number of local epochs
                     key, key1 = jax.random.split(key)
-                    s_c_images = split(jax.random.permutation(key1, im), len(im) // 80) # TODO Fix args
-                    s_c_labels = split(jax.random.permutation(key1, lab), len(lab) // 80) # TODO Fix args
+                    s_c_images = split(jax.random.permutation(key1, im), len(im) // globals.local_batch_size)
+                    s_c_labels = split(jax.random.permutation(key1, lab), len(lab) // globals.local_batch_size)
 
                     s_c_batch = []
-                    for i in range(len(im) // 80): # TODO Fix args
+                    for i in range(len(im) // globals.local_batch_size):
                         sub_batch_dict = {}
                         sub_batch_dict["image"] = s_c_images[i]
                         sub_batch_dict["label"] = s_c_labels[i]

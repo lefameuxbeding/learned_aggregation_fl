@@ -172,6 +172,11 @@ def meta_train(args):
     task = get_task(args)
     data = next(task.datasets.train)
 
+    globals.num_local_steps = args.num_local_steps
+    globals.number_clients = args.number_clients
+    globals.participation_rate = args.participation_rate
+    globals.local_batch_size = args.local_batch_size
+
     for i in tqdm(
         range(iteration, args.num_outer_steps),
         initial=iteration,
