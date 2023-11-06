@@ -7,6 +7,7 @@ from typing import Any, Callable, Optional, Tuple
 import gin
 import jax
 import jax.numpy as jnp
+import numpy as onp
 from haiku._src.data_structures import FlatMap
 from learned_optimization import summary, training, tree_utils
 from learned_optimization.learned_optimizers import base as lopt_base
@@ -27,6 +28,9 @@ from learned_optimization.outer_trainers.lopt_truncated_step import (
     vectorized_loss_and_aux,
 )
 from learned_optimization.tasks import base as tasks_base
+
+
+import globals
 
 
 def progress_or_reset_inner_opt_state_fedlopt(
@@ -100,13 +104,14 @@ def progress_or_reset_inner_opt_state_fedlopt(
 
             local_opt = optax_opts.SGD(learning_rate=local_learning_rate)
             local_opt_state = local_opt.init(p)
+            
+            key, key1 = jax.random.split(key)
+            chosen_clients_images = jax.random.choice(key1, jnp.array(globals.splitted_data["image"]), shape=(int(100 * 0.1),), replace=False) # TODO Fix args
+            chosen_clients_labels = jax.random.choice(key1, jnp.array(globals.splitted_data["label"]), shape=(int(100 * 0.1),), replace=False) # TODO Fix args
+            chosen_clients_data = {"image": chosen_clients_images, "label": chosen_clients_labels}
 
-            # print(data.keys())
-            # exit(0)
-            images = jnp.array(data["image"])
-            labels = jnp.array(data["label"])
-            # images = jnp.array(data["obs"])
-            # labels = jnp.array(data["target"])
+            images = jnp.array(chosen_clients_data["image"])
+            labels = jnp.array(chosen_clients_data["label"])
 
             def split(arr, split_factor):
                 """Splits the first axis of `arr` evenly across the number of devices."""
@@ -114,42 +119,41 @@ def progress_or_reset_inner_opt_state_fedlopt(
                     split_factor, arr.shape[0] // split_factor, *arr.shape[1:]
                 )
 
-            images = split(images, opt.num_grads)
-            labels = split(labels, opt.num_grads)
-
-            def local_updates(im, lab):
+            def local_updates(im, lab, key):
                 l_opt_state = copy.deepcopy(local_opt_state)
-                s_c_images = split(im, num_local_steps)
-                s_c_labels = split(lab, num_local_steps)
-
-                s_c_batch = []
-                for i in range(num_local_steps):
-                    sub_batch_dict = {}
-                    # sub_batch_dict["obs"] = s_c_images[i]
-                    # sub_batch_dict["target"] = s_c_labels[i]
-                    sub_batch_dict["image"] = s_c_images[i]
-                    sub_batch_dict["label"] = s_c_labels[i]
-                    s_c_batch.append(FlatMap(sub_batch_dict))
 
                 losses = []
 
-                for sub_client_batch in s_c_batch:
-                    params = local_opt.get_params(l_opt_state)
-                    loss, grad = jax.value_and_grad(task.loss)(
-                        params, key, sub_client_batch
-                    )
-                    losses.append(loss)
-                    l_opt_state = local_opt.update(l_opt_state, grad, loss=loss)
+                for _ in range(4): # Total number of local epochs # TODO Fix args
+                    key, key1 = jax.random.split(key)
+                    s_c_images = split(jax.random.permutation(key1, im), len(im) // 80) # TODO Fix args
+                    s_c_labels = split(jax.random.permutation(key1, lab), len(lab) // 80) # TODO Fix args
 
-                old_params = local_opt.get_params(local_opt_state)
-                new_params = local_opt.get_params(l_opt_state)
-                delta = jax.tree_util.tree_map(
-                    lambda old_p, new_p: new_p - old_p, old_params, new_params
-                )
+                    s_c_batch = []
+                    for i in range(len(im) // 80): # TODO Fix args
+                        sub_batch_dict = {}
+                        sub_batch_dict["image"] = s_c_images[i]
+                        sub_batch_dict["label"] = s_c_labels[i]
+                        s_c_batch.append(FlatMap(sub_batch_dict))
+
+                    for sub_client_batch in s_c_batch: # One local epoch
+                        params = local_opt.get_params(l_opt_state)
+                        loss, grad = jax.value_and_grad(task.loss)(
+                            params, key, sub_client_batch
+                        )
+                        losses.append(loss)
+                        l_opt_state = local_opt.update(l_opt_state, grad, loss=loss)
+
+                    old_params = local_opt.get_params(local_opt_state)
+                    new_params = local_opt.get_params(l_opt_state)
+                    delta = jax.tree_util.tree_map(
+                        lambda old_p, new_p: new_p - old_p, old_params, new_params
+                    )
 
                 return jnp.mean(jnp.array(losses)), delta
 
-            losses, deltas = jax.vmap(local_updates)(images, labels)
+            key, key1 = jax.random.split(key)
+            losses, deltas = jax.vmap(local_updates, in_axes=(0, 0, None))(images, labels, key1)
 
             l = jnp.mean(jnp.array(losses))
 

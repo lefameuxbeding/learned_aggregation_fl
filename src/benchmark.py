@@ -53,11 +53,9 @@ def benchmark(args):
 
         for _ in tqdm(range(args.num_inner_steps), ascii=True, desc="Inner Loop"):
             key, key1 = jax.random.split(key)
-            chosen_clients = jax.random.choice(key1, onp.arange(args.number_clients), shape=(int(args.number_clients * args.participation_rate),), replace=False)
-            chosen_clients_data = {"image": [], "label": []}
-            for c in chosen_clients:
-                chosen_clients_data["image"].append(splitted_data["image"][c])
-                chosen_clients_data["label"].append(splitted_data["label"][c])
+            chosen_clients_images = jax.random.choice(key1, jnp.array(splitted_data["image"]), shape=(int(args.number_clients * args.participation_rate),), replace=False)
+            chosen_clients_labels = jax.random.choice(key1, jnp.array(splitted_data["label"]), shape=(int(args.number_clients * args.participation_rate),), replace=False)
+            chosen_clients_data = {"image": chosen_clients_images, "label": chosen_clients_labels}
 
             key, key1 = jax.random.split(key)
             opt_state, loss = update(opt_state, key1, FlatMap(chosen_clients_data))

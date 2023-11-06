@@ -4,13 +4,17 @@ from tqdm import tqdm
 import jax
 import wandb
 from learned_optimization import checkpoints
-
-from meta_trainers import get_meta_trainer
+from haiku._src.data_structures import FlatMap
 
 from glob import glob
 import os
-import shutil
 import re
+
+from meta_trainers import get_meta_trainer
+from tasks import get_task
+
+from benchmark import split_data_into_clients
+import globals
 
 
 def natural_sort(l):
@@ -164,6 +168,10 @@ def meta_train(args):
     iteration = int(
         outer_trainer_state.gradient_learner_state.theta_opt_state.iteration
     )
+
+    task = get_task(args)
+    data = next(task.datasets.train)
+
     for i in tqdm(
         range(iteration, args.num_outer_steps),
         initial=iteration,
@@ -172,6 +180,10 @@ def meta_train(args):
         desc="Outer Loop",
     ):
         key, key1 = jax.random.split(key)
+
+        # Each meta-iteration, resplit data into clients
+        globals.splitted_data = split_data_into_clients(data, args.number_clients)
+
         outer_trainer_state, meta_loss, _ = meta_trainer.update(
             outer_trainer_state, key1, with_metrics=False
         )
