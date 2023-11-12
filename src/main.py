@@ -121,12 +121,13 @@ if __name__ == "__main__":
         cfg.local_learning_rate,
         cfg.name_suffix,
     )
-    cfg.num_grads = int(args.number_clients * args.participation_rate)
 
     if cfg.wandb_checkpoint_id is not None:
         cfg.test_checkpoint = download_wandb_checkpoint(cfg)
 
     args = argparse.Namespace(**cfg._cfg_dict)
+    
+    cfg.num_grads = int(args.number_clients * args.participation_rate)
 
     assert_args(args)
 
