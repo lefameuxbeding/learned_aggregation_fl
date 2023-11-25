@@ -11,6 +11,7 @@ from fed_adafac_mlp_lopt import FedAdafacMLPLOpt
 from fed_mlp_lopt import FedMLPLOpt
 from slowmo import SGDSlowMo
 from tasks import get_task
+from fed_adaptive_opt import FedAdaptive
 
 import gin
 import optax
@@ -221,6 +222,100 @@ def _fedavg(args):
     return opt, update
 
 
+def _fedadam(args):
+    opt = FedAdaptive(learning_rate=args.local_learning_rate)
+
+    task = get_task(args)
+
+    @jax.jit
+    def update(opt_state, key, batch):
+        images = jnp.array(batch["image"])
+        labels = jnp.array(batch["label"])
+
+        def split(arr, split_factor):
+            """Splits the first axis of `arr` evenly across the number of devices."""
+            return arr.reshape(
+                split_factor, arr.shape[0] // split_factor, *arr.shape[1:]
+            )
+
+        def local_updates(im, lab, key):
+            local_opt_state = copy.deepcopy(opt_state)
+
+            losses = []
+
+            for _ in range(args.num_local_steps): # Total number of local epochs
+                key, key1 = jax.random.split(key) # Key is same so permutations are the same for each array
+                s_c_images = split(jax.random.permutation(key1, im), len(im) // args.local_batch_size)
+                s_c_labels = split(jax.random.permutation(key1, lab), len(lab) // args.local_batch_size)
+
+                s_c_batch = []
+                for i in range(len(im) // args.local_batch_size):
+                    sub_batch_dict = {}
+                    sub_batch_dict["image"] = s_c_images[i]
+                    sub_batch_dict["label"] = s_c_labels[i]
+                    s_c_batch.append(FlatMap(sub_batch_dict))
+
+                for sub_client_batch in s_c_batch:  # One local epoch
+                    params = opt.get_params(local_opt_state)
+                    l, grad = jax.value_and_grad(task.loss)(params, key, sub_client_batch)
+                    losses.append(l)
+                    local_opt_state = opt.update(local_opt_state, grad, loss=l)
+
+            return jnp.mean(jnp.array(losses)), opt.get_params(local_opt_state)
+
+        key, key1 = jax.random.split(key)
+        losses, new_params = jax.vmap(local_updates, in_axes=(0, 0, None))(images, labels, key1)
+        avg_params = jax.tree_util.tree_map(
+            lambda p, nps: jnp.mean(nps, axis=0), opt.get_params(opt_state), new_params
+        )
+
+        ##### ADAPTIVE UPDATE #####
+
+        def update_momentum(momentum, avg_params, current_params, beta):
+            return beta * momentum + (1 - beta) * (avg_params - current_params)
+        
+        def update_second_momentum(second_momentum, avg_params, current_params, second_beta): # Change depending on fed adapt optimizer
+            return second_beta * second_momentum + (1 - second_beta) * (avg_params - current_params) * (avg_params - current_params)
+
+        def update_params(current_params, momentum, second_momentum, learning_rate):
+            return current_params + learning_rate * (momentum / (jnp.sqrt(second_momentum) + 0.0001))
+
+        # Get the momentums and current parameters
+        momentum = opt_state.optax_opt_state[1]["momentum"]
+        second_momentum = opt_state.optax_opt_state[1]["second_momentum"]
+        current_params = opt.get_params(opt_state)
+
+        # Update the momentums
+        momentum = jax.tree_util.tree_map(
+            update_momentum,
+            momentum,
+            avg_params,
+            current_params,
+            jax.tree_util.tree_map(lambda x: args.beta, momentum),
+        )
+
+        second_momentum = jax.tree_util.tree_map(
+            update_second_momentum,
+            second_momentum,
+            avg_params,
+            current_params,
+            jax.tree_util.tree_map(lambda x: args.second_beta, second_momentum)
+        )
+
+        # Update the parameters
+        updated_params = jax.tree_util.tree_map(
+            update_params,
+            current_params,
+            momentum,
+            second_momentum,
+            jax.tree_util.tree_map(lambda x: args.global_learning_rate, current_params),
+        )
+
+        return opt.init(updated_params, momentum=momentum, second_momentum=second_momentum), jnp.mean(jnp.array(losses))
+
+    return opt, update
+
+
 def _fedavg_slowmo(args):
     opt = SGDSlowMo(learning_rate=args.local_learning_rate)
 
@@ -299,7 +394,7 @@ def _fedavg_slowmo(args):
             update_params,
             current_params,
             momentum,
-            jax.tree_util.tree_map(lambda x: args.slowmo_learning_rate, current_params),
+            jax.tree_util.tree_map(lambda x: args.global_learning_rate, current_params),
         )
 
         return opt.init(updated_params, momentum=momentum), jnp.mean(jnp.array(losses))
@@ -313,6 +408,7 @@ def get_optimizer(args):
         "sgd": _sgd,
         "fedavg": _fedavg,
         "fedavg-slowmo": _fedavg_slowmo,
+        "fedadam" : _fedadam,
         "fedlopt": _fedlagg,
         "fedlopt-adafac": _fedlagg,
         "fedlagg": _fedlagg,

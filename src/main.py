@@ -22,7 +22,8 @@ def parse_args():
     parser.add_argument("--optimizer", type=str, choices=["sgd",
                                                           "adam", 
                                                           "fedavg", 
-                                                          "fedavg-slowmo", 
+                                                          "fedavg-slowmo",
+                                                          "fedadam", 
                                                           "fedlopt", 
                                                           "fedlopt-adafac", 
                                                           "fedlagg", 
@@ -40,6 +41,7 @@ def parse_args():
     parser.add_argument("--num_inner_steps", type=int)
     parser.add_argument("--num_outer_steps", type=int)
     parser.add_argument("--beta", type=float)
+    parser.add_argument("--second_beta", type=float)
     parser.add_argument("--number_clients", type=int)
     parser.add_argument("--participation_rate", type=float)
     parser.add_argument("--sweep_config", type=str)
@@ -49,7 +51,7 @@ def parse_args():
     parser.add_argument("--num_devices", type=int)
     parser.add_argument("--num_tasks", type=int)
     parser.add_argument("--name_suffix", type=str)
-    parser.add_argument("--slowmo_learning_rate", type=float)
+    parser.add_argument("--global_learning_rate", type=float)
     parser.add_argument("--wandb_checkpoint_id", type=str)
     parser.add_argument("--meta_loss_split", type=str)
     parser.add_argument("--test_project", type=str)

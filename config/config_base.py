@@ -5,7 +5,7 @@ run_type = None
 optimizer = "fedavg"
 task = "small-image-mlp-fmst"
 hidden_size = 32
-local_learning_rate = 0.5
+local_learning_rate = 0.1
 local_batch_size = 80
 num_grads = 10
 num_local_steps = 4
@@ -26,8 +26,10 @@ num_runs = 10
 wandb_checkpoint_id = None
 test_project = "learned_aggregation_fl"
 
-# for slowmo
-beta = 0.99
+# for fed adaptive optimizers
+beta = 0.9
+second_beta = 0.99
+global_learning_rate = 0.05
 
 # FL
 number_clients = 100
