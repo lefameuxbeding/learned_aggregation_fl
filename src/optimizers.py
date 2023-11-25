@@ -120,8 +120,6 @@ def _fedlagg(args):
 
         images = jnp.array(batch["image"])
         labels = jnp.array(batch["label"])
-        # images = jnp.array(batch["obs"])
-        # labels = jnp.array(batch["target"])
 
         def split(arr, split_factor):
             """Splits the first axis of `arr` evenly across the number of devices."""
@@ -129,32 +127,30 @@ def _fedlagg(args):
                 split_factor, arr.shape[0] // split_factor, *arr.shape[1:]
             )
 
-        images = split(images, agg.num_grads)
-        labels = split(labels, agg.num_grads)
-
-        def local_updates(im, lab):
+        def local_updates(im, lab, key):
             l_opt_state = copy.deepcopy(local_opt_state)
-            s_c_images = split(im, args.num_local_steps)
-            s_c_labels = split(lab, args.num_local_steps)
-
-            s_c_batch = []
-            for i in range(args.num_local_steps):
-                sub_batch_dict = {}
-                # sub_batch_dict["obs"] = s_c_images[i]
-                # sub_batch_dict["target"] = s_c_labels[i]
-                sub_batch_dict["image"] = s_c_images[i]
-                sub_batch_dict["label"] = s_c_labels[i]
-                s_c_batch.append(FlatMap(sub_batch_dict))
 
             losses = []
 
-            for sub_client_batch in s_c_batch:
-                params = local_opt.get_params(l_opt_state)
-                loss, grad = jax.value_and_grad(task.loss)(
-                    params, key, sub_client_batch
-                )
-                losses.append(loss)
-                l_opt_state = local_opt.update(l_opt_state, grad, loss=loss)
+            for _ in range(args.num_local_steps): # Total number of local epochs
+                key, key1 = jax.random.split(key) # Key is same so permutations are the same for each array
+                s_c_images = split(jax.random.permutation(key1, im), len(im) // args.local_batch_size)
+                s_c_labels = split(jax.random.permutation(key1, lab), len(lab) // args.local_batch_size)
+
+                s_c_batch = []
+                for i in range(len(im) // args.local_batch_size):
+                    sub_batch_dict = {}
+                    sub_batch_dict["image"] = s_c_images[i]
+                    sub_batch_dict["label"] = s_c_labels[i]
+                    s_c_batch.append(FlatMap(sub_batch_dict))
+
+                for sub_client_batch in s_c_batch: # One local epoch
+                    params = local_opt.get_params(l_opt_state)
+                    loss, grad = jax.value_and_grad(task.loss)(
+                        params, key, sub_client_batch
+                    )
+                    losses.append(loss)
+                    l_opt_state = local_opt.update(l_opt_state, grad, loss=loss)
 
             old_params = local_opt.get_params(local_opt_state)
             new_params = local_opt.get_params(l_opt_state)
@@ -164,7 +160,8 @@ def _fedlagg(args):
 
             return jnp.mean(jnp.array(losses)), delta
 
-        losses, deltas = jax.vmap(local_updates)(images, labels)
+        key, key1 = jax.random.split(key)
+        losses, deltas = jax.vmap(local_updates, in_axes=(0, 0, None))(images, labels, key1)
         loss = jnp.mean(jnp.array(losses))
 
         return agg.update(opt_state, deltas, loss=loss), loss
