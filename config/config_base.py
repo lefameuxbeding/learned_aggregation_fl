@@ -10,10 +10,11 @@ local_batch_size = 80
 num_grads = 10
 num_local_steps = 4
 num_inner_steps = 1000
-learning_rate = 0.0001
 name_suffix = ""
 
 # meta training only
+truncation_schedule_min_length = 1000
+learning_rate = 0.0001
 num_outer_steps = 5000
 from_checkpoint = False
 num_devices = 1
@@ -29,7 +30,7 @@ test_project = "learned_aggregation_fl"
 # for fed adaptive optimizers
 beta = 0.9
 second_beta = 0.99
-global_learning_rate = 0.05
+global_learning_rate = 0.01
 
 # FL
 number_clients = 100

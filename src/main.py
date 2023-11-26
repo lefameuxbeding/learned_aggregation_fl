@@ -24,6 +24,8 @@ def parse_args():
                                                           "fedavg", 
                                                           "fedavg-slowmo",
                                                           "fedadam", 
+                                                          "fedyogi",
+                                                          "fedadagrad",
                                                           "fedlopt", 
                                                           "fedlopt-adafac", 
                                                           "fedlagg", 
@@ -40,6 +42,7 @@ def parse_args():
     parser.add_argument("--num_runs", type=int)
     parser.add_argument("--num_inner_steps", type=int)
     parser.add_argument("--num_outer_steps", type=int)
+    parser.add_argument("--truncation_schedule_min_length", type=int)
     parser.add_argument("--beta", type=float)
     parser.add_argument("--second_beta", type=float)
     parser.add_argument("--number_clients", type=int)

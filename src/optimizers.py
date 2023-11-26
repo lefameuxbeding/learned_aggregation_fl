@@ -222,7 +222,7 @@ def _fedavg(args):
     return opt, update
 
 
-def _fedadam(args):
+def _fedadaptive(args):
     opt = FedAdaptive(learning_rate=args.local_learning_rate)
 
     task = get_task(args)
@@ -274,11 +274,17 @@ def _fedadam(args):
         def update_momentum(momentum, avg_params, current_params, beta):
             return beta * momentum + (1 - beta) * (avg_params - current_params)
         
-        def update_second_momentum(second_momentum, avg_params, current_params, second_beta): # Change depending on fed adapt optimizer
+        def fedadam_update_second_momentum(second_momentum, avg_params, current_params, second_beta): # FedAdam
             return second_beta * second_momentum + (1 - second_beta) * (avg_params - current_params) * (avg_params - current_params)
+        
+        def fedadagrad_update_second_momentum(second_momentum, avg_params, current_params, second_beta): # FedAdagrad
+            return second_momentum + (avg_params - current_params) * (avg_params - current_params)
+        
+        def fedyogi_update_second_momentum(second_momentum, avg_params, current_params, second_beta): # FedYogi
+            return second_momentum - (1 - second_beta) * (avg_params - current_params) * (avg_params - current_params) * jnp.sign(second_momentum - (avg_params - current_params) * (avg_params - current_params))
 
         def update_params(current_params, momentum, second_momentum, learning_rate):
-            return current_params + learning_rate * (momentum / (jnp.sqrt(second_momentum) + 0.0001))
+            return current_params + learning_rate * (momentum / (jnp.sqrt(second_momentum) + 0.0001)) # Could change the value of tau
 
         # Get the momentums and current parameters
         momentum = opt_state.optax_opt_state[1]["momentum"]
@@ -294,8 +300,13 @@ def _fedadam(args):
             jax.tree_util.tree_map(lambda x: args.beta, momentum),
         )
 
+        update_second_momentum = {
+            "fedadam" : fedadam_update_second_momentum,
+            "fedadagrad" : fedadagrad_update_second_momentum,
+            "fedyogi" : fedyogi_update_second_momentum,
+        }
         second_momentum = jax.tree_util.tree_map(
-            update_second_momentum,
+            update_second_momentum[args.optimizer],
             second_momentum,
             avg_params,
             current_params,
@@ -408,7 +419,9 @@ def get_optimizer(args):
         "sgd": _sgd,
         "fedavg": _fedavg,
         "fedavg-slowmo": _fedavg_slowmo,
-        "fedadam" : _fedadam,
+        "fedadam" : _fedadaptive,
+        "fedyogi" : _fedadaptive,
+        "fedadagrad" : _fedadaptive,
         "fedlopt": _fedlagg,
         "fedlopt-adafac": _fedlagg,
         "fedlagg": _fedlagg,
