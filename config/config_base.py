@@ -23,7 +23,7 @@ auto_resume = False
 meta_loss_split = None
 
 # meta testing only
-num_runs = 10
+num_runs = 3
 wandb_checkpoint_id = None
 test_project = "learned_aggregation_fl"
 

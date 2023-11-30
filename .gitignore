@@ -17,5 +17,7 @@ eval_*
 models
 notebooks
 
+clients.pickle
+
 downloads
 fashion_mnist

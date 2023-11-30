@@ -13,7 +13,7 @@ import re
 from meta_trainers import get_meta_trainer
 from tasks import get_task
 
-from benchmark import split_data_into_clients
+from benchmark import split_data
 import globals
 
 
@@ -187,7 +187,7 @@ def meta_train(args):
         key, key1 = jax.random.split(key)
 
         # Each meta-iteration, resplit data into clients
-        globals.splitted_data = split_data_into_clients(data, args.number_clients)
+        globals.splitted_data = split_data(data, args.num_grads, 10, args.alpha) # TODO change num classes dynamically
 
         outer_trainer_state, meta_loss, _ = meta_trainer.update(
             outer_trainer_state, key1, with_metrics=False
