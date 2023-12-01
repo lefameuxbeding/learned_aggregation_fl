@@ -19,17 +19,22 @@ def split_data(data, num_clients, num_classes, alpha):
         data_list.append({"features" : data["image"][i], "labels" : data["label"][i]})
     sharded_data = list(sharder.shard_rows(data_list))
 
-    splitted_data = {"image": [], "label": []}
+    # I know it can be done in one loop but at this point it doesn't matter as long as it works
+    labels_list = []
     for client in sharded_data:
-        image_list = []
-        label_list = []
+        sample_list = []
         for sample in client[1]:
-            image_list.append(sample["features"])
-            label_list.append(sample["labels"])
-        splitted_data["image"].append(image_list)
-        splitted_data["label"].append(label_list)
+            sample_list.append(sample["labels"])
+        labels_list.append(onp.array(sample_list))
 
-    return FlatMap(splitted_data)
+    features_list = []
+    for client in sharded_data:
+        sample_list = []
+        for sample in client[1]:
+            sample_list.append(sample["features"])
+        features_list.append(onp.array(sample_list))
+
+    return {"image" : features_list, "label" : labels_list}
 
 
 def benchmark(args):
@@ -49,7 +54,7 @@ def benchmark(args):
         params = task.init(key1)
         opt_state = opt.init(params, num_steps=args.num_inner_steps)
 
-        splitted_data = split_data(data, args.num_grads, 10, args.alpha) # TODO change num classes dynamically
+        splitted_data = split_data(data, args.number_clients, task.datasets.extra_info["num_classes"], args.alpha)
 
         for _ in tqdm(range(args.num_inner_steps), ascii=True, desc="Inner Loop"):
             # Choose clients
@@ -97,7 +102,7 @@ def sweep(args):
         params = task.init(key1)
         opt_state = opt.init(params, num_steps=args.num_inner_steps)
 
-        splitted_data = split_data_into_clients(data, args.number_clients)
+        splitted_data = split_data(data, args.number_clients, task.datasets.extra_info["num_classes"], args.alpha)
 
         for _ in tqdm(range(args.num_inner_steps), ascii=True, desc="Inner Loop"):
             key, key1 = jax.random.split(key)

@@ -187,7 +187,7 @@ def meta_train(args):
         key, key1 = jax.random.split(key)
 
         # Each meta-iteration, resplit data into clients
-        globals.splitted_data = split_data(data, args.num_grads, 10, args.alpha) # TODO change num classes dynamically
+        globals.splitted_data = split_data(data, args.number_clients, task.datasets.extra_info["num_classes"], args.alpha)
 
         outer_trainer_state, meta_loss, _ = meta_trainer.update(
             outer_trainer_state, key1, with_metrics=False

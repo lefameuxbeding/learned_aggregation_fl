@@ -1,3 +1,4 @@
+# https://github.com/GwenLegate/GuidingLastLayerFLPretrain/blob/main/src/dirichlet_sharder.py
 
 from __future__ import annotations
 
