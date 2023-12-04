@@ -510,8 +510,8 @@ def get_task(args, is_test=False):
     }
 
     train_batch_size = {
-        "small-image-mlp-fmst": 48000,
         "image-mlp-fmst": 48000,
+        "conv-c10": 40000,
     }
 
     test_batch_size = {

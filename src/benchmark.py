@@ -67,17 +67,44 @@ def benchmark(args):
             key, key1 = jax.random.split(key)
             opt_state, _ = update(opt_state, key1, FlatMap(chosen_clients_data))
 
-            # Compute losses
+            # Compute and log losses
             params = opt.get_params(opt_state)
 
             key, key1 = jax.random.split(key)
             loss = task.loss(params, key1, data)
 
             test_batch = next(test_task.datasets.test)
-            key, key1 = jax.random.split(key)
-            test_loss = test_task.loss(params, key1, test_batch)
+            try:
+                test_loss, test_acc = test_task.loss_and_accuracy(params, key1, test_batch)
+                test_log = {
+                    "test loss": test_loss,
+                    "test accuracy": test_acc,
+                }
+            except AttributeError as e:
+                Warning("test_task does not have loss_and_accuracy method, defaulting to loss")
+                if args.needs_state:
+                    state = opt.get_state(opt_state)
+                    test_loss = test_task.loss(params, state, key1, test_batch)
+                else:
+                    test_loss = test_task.loss(params, key1, test_batch)
 
-            run.log({"train loss": loss, "test loss": test_loss})
+                test_log = {"test loss": test_loss}
+
+
+            outer_valid_batch = next(test_task.datasets.outer_valid)
+            if args.needs_state:
+                state = opt.get_state(opt_state)
+                outer_valid_loss = test_task.loss(params, state, key1, outer_valid_batch)
+            else:
+                outer_valid_loss = test_task.loss(params, key1, outer_valid_batch)
+            
+            to_log = {
+                    "train loss": loss,
+                    "outer valid loss": outer_valid_loss
+                }
+            to_log.update(test_log)
+
+            run.log(to_log)
 
         run.finish()
 
