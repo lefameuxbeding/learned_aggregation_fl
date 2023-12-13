@@ -74,7 +74,7 @@ def _fedlagg_meta_trainer(args):
                 truncated_step=truncated_step, trunc_length=50
             )
 
-    tasks = get_task(args)
+    tasks = get_task(args, is_test=True) # Not really test but just to load less data
 
     if type(tasks) is list:
         gradient_estimators = [

@@ -6,9 +6,9 @@ optimizer = "fedavg"
 task = "small-image-mlp-fmst"
 hidden_size = 32
 local_learning_rate = 0.1
-local_batch_size = 80
+local_batch_size = 20
 num_grads = 10
-num_local_steps = 4
+num_local_steps = 1
 num_inner_steps = 1000
 name_suffix = ""
 
@@ -33,8 +33,9 @@ second_beta = 0.99
 global_learning_rate = 0.01
 
 # FL
-number_clients = 100
-participation_rate = 0.1
+alpha=100
+number_clients = 400
+participation_rate = 0.025
 
 # sweeps only
 sweep_config = dict()

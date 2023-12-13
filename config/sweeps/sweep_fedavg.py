@@ -1,25 +1,31 @@
 _base_ = ["./sweeps_base.py"]
 
-optimizer = "fedavg"
-task = "image-mlp-fmst"
-
 sweep_config = dict(
     method="grid",
-    metric=dict(name="test loss", goal="minimize"),
+    metric=dict(name="valid loss", goal="minimize"),
     parameters=dict(
+        alpha=dict(
+            values=[
+                0.1,
+                100,
+            ]
+        ),
         local_learning_rate=dict(
             values=[
                 1,
-                0.5,
                 0.1,
-                0.05,
                 0.01,
-                0.005,
                 0.001,
-                0.0005,
                 0.0001,
-                0.00005,
-                0.00001,
+            ]
+        ),
+        global_learning_rate=dict(
+            values=[
+                1,
+                0.1,
+                0.01,
+                0.001,
+                0.0001,
             ]
         ),
     ),

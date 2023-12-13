@@ -124,7 +124,7 @@ def progress_or_reset_inner_opt_state_fedlopt(
 
                 losses = []
 
-                for _ in range(globals.nun_local_steps): # Total number of local epochs
+                for _ in range(globals.num_local_steps): # Total number of local epochs
                     key, key1 = jax.random.split(key)
                     s_c_images = split(jax.random.permutation(key1, im), len(im) // globals.local_batch_size)
                     s_c_labels = split(jax.random.permutation(key1, lab), len(lab) // globals.local_batch_size)
